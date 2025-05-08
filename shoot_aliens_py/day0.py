@@ -3,6 +3,7 @@
 import pygame
 import sys
 from airplane import Airplane 
+from bullet import Bullet
 
 # Initialize pygame
 pygame.init()
@@ -24,6 +25,7 @@ clock = pygame.time.Clock()
 def main():
 
     plane = Airplane("res/airplane.png", 100, 100, WINDOW_WIDTH // 2, WINDOW_HEIGHT - 150, AIRPLANE_SPEED)
+    bullets = []
 
     while True:
         for event in pygame.event.get():
@@ -33,13 +35,24 @@ def main():
 
         # Get keys pressed
         keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_f]:
+            bullet = Bullet(plane.getPos()[0] + 50, plane.getPos()[1])
+            bullets.append(bullet)
+
         # Move airplane
         plane.move(keys, WINDOW_WIDTH)
 
         # Draw everything
-        screen.fill((0, 0, 0))  # Clear screen with black
+        screen.fill((0, 0, 100))  # Clear screen with black
         plane.draw(screen)
-        
+
+        for bullet in bullets[:]:
+            bullet.move()
+            if bullet.is_off_screen(WINDOW_HEIGHT):
+                bullets.remove(bullet)
+            bullet.draw(screen)
+
         pygame.display.flip()  # Update display
 
         # Cap the frame rate

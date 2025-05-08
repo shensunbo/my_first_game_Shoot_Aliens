@@ -16,5 +16,8 @@ class Airplane:
         if keys[pygame.K_RIGHT] and self.rect.right < window_width:
             self.rect.x += self.speed
 
+    def getPos(self):
+        return self.rect.x, self.rect.y
+
     def draw(self, screen):
         screen.blit(self.image, self.rect)
