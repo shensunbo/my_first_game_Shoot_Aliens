@@ -21,6 +21,7 @@ class Bullet:
         self.rect.center = (x, y)
         self.speed = 15
         self.damage = damage
+        self.last_trail_tick = 0
 
     def move(self):
         """Advance the bullet upward each frame."""

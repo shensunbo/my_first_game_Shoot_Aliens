@@ -55,6 +55,8 @@
   "assets": {
     "player": "res/player/finger.png",
     "bullet": "res/bullet/tomato.png",
+    "flash": "res/flash/MuzzleFlash.png",
+    "explosion": "res/explosion/exp2_0.png",
     "enemies": [
       "res/enemy/aptiv.png",
       "res/enemy/anthropic.png",

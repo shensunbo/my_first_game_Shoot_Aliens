@@ -14,6 +14,115 @@ from background import Starfield
 from config import load_config
 
 
+class TimedSpriteEffect:
+    """One-shot sprite that disappears after a short lifetime."""
+
+    def __init__(self, surface: pygame.Surface, pos: tuple[int, int], duration_ms: int = 90, anchor: str = "center"):
+        self.surface = surface
+        self.pos = pos
+        self.end_time = pygame.time.get_ticks() + duration_ms
+        self.anchor = anchor
+
+    def is_dead(self, now: int) -> bool:
+        return now >= self.end_time
+
+    def draw(self, screen: pygame.Surface):
+        rect = self.surface.get_rect()
+        if self.anchor == "midtop":
+            rect.midtop = self.pos
+        elif self.anchor == "midbottom":
+            rect.midbottom = self.pos
+        else:
+            rect.center = self.pos
+        screen.blit(self.surface, rect)
+
+
+class AnimatedEffect:
+    """Multi-frame animation that advances on a fixed frame duration."""
+
+    def __init__(self, frames: list[pygame.Surface], pos: tuple[int, int], frame_ms: int = 50, anchor: str = "center"):
+        self.frames = frames
+        self.pos = pos
+        self.frame_ms = frame_ms
+        self.start_time = pygame.time.get_ticks()
+        self.anchor = anchor
+
+    def is_dead(self, now: int) -> bool:
+        return self._frame_index(now) >= len(self.frames)
+
+    def _frame_index(self, now: int) -> int:
+        elapsed = now - self.start_time
+        return max(0, elapsed // self.frame_ms)
+
+    def draw(self, screen: pygame.Surface, now: int):
+        idx = self._frame_index(now)
+        if idx >= len(self.frames):
+            return
+        frame = self.frames[idx]
+        rect = frame.get_rect()
+        if self.anchor == "midtop":
+            rect.midtop = self.pos
+        else:
+            rect.center = self.pos
+        screen.blit(frame, rect)
+
+
+class TrailDot:
+    """Small fading circle used for bullet afterimage/trail."""
+
+    def __init__(self, pos: tuple[int, int], radius: int = 6, duration_ms: int = 180):
+        self.pos = pos
+        self.radius = radius
+        self.duration_ms = duration_ms
+        self.end_time = pygame.time.get_ticks() + duration_ms
+        self.surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(self.surface, (255, 255, 255, 140), (radius, radius), radius)
+
+    def is_dead(self, now: int) -> bool:
+        return now >= self.end_time
+
+    def draw(self, screen: pygame.Surface, now: int):
+        remaining = max(0, self.end_time - now)
+        alpha = int(140 * (remaining / self.duration_ms))
+        if alpha <= 0:
+            return
+        surf = self.surface.copy()
+        surf.set_alpha(alpha)
+        rect = surf.get_rect(center=self.pos)
+        screen.blit(surf, rect)
+
+
+class Particle:
+    """Procedural particle (e.g., smoke or debris) with fade-out."""
+
+    def __init__(self, pos: tuple[int, int], vel: tuple[float, float], radius: int = 6, duration_ms: int = 400, color=(180, 180, 180, 180)):
+        self.x, self.y = pos
+        self.vx, self.vy = vel
+        self.radius = radius
+        self.duration_ms = duration_ms
+        self.end_time = pygame.time.get_ticks() + duration_ms
+        self.color = color
+        self.surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(self.surface, color, (radius, radius), radius)
+
+    def is_dead(self, now: int) -> bool:
+        return now >= self.end_time
+
+    def update(self, dt_ms: int):
+        self.x += self.vx * (dt_ms / 1000)
+        self.y += self.vy * (dt_ms / 1000)
+
+    def draw(self, screen: pygame.Surface, now: int):
+        remaining = max(0, self.end_time - now)
+        alpha = int(self.color[3] * (remaining / self.duration_ms))
+        if alpha <= 0:
+            return
+        surf = self.surface.copy()
+        surf.set_alpha(alpha)
+        rect = surf.get_rect(center=(int(self.x), int(self.y)))
+        screen.blit(surf, rect)
+
+
 class Game:
     """Encapsulates all gameplay state, rendering, and event handling."""
 
@@ -57,6 +166,8 @@ class Game:
         # Assets
         self.PLAYER_IMAGE_PATH = self._resolve_asset_path(a_cfg.get("player", "res/airplane.png"))
         self.BULLET_IMAGE_PATH = self._resolve_asset_path(a_cfg.get("bullet", "res/bullet.png"))
+        self.FLASH_IMAGE_PATH = self._resolve_asset_path(a_cfg.get("flash", "res/flash/MuzzleFlash.png"))
+        self.EXPLOSION_IMAGE_PATH = self._resolve_asset_path(a_cfg.get("explosion", "res/explosion/exp2_0.png"))
         enemy_assets = a_cfg.get(
             "enemies",
             [
@@ -91,6 +202,8 @@ class Game:
         self.bullet_surface = pygame.transform.scale(
             pygame.image.load(self.BULLET_IMAGE_PATH).convert_alpha(), (50, 50)
         )
+        self.muzzle_flash_surface = pygame.image.load(self.FLASH_IMAGE_PATH).convert_alpha()
+        self.explosion_frames = self._load_explosion_frames(self.EXPLOSION_IMAGE_PATH, scale=1.35)
 
         self.ENEMY_SPAWN_EVENT = pygame.USEREVENT + 1
 
@@ -99,6 +212,7 @@ class Game:
         self.bullets = []
         self.enemies = []
         self.powerups = []
+        self.effects = []
         self.score = 0
         self.lives = self.PLAYER_LIVES
         self.last_shot_time = 0
@@ -107,6 +221,7 @@ class Game:
         self.rapid_fire_until = 0
         self.game_over = False
         self.paused = False
+        self.last_effect_tick = pygame.time.get_ticks()
 
         self.reset_game()
 
@@ -129,6 +244,7 @@ class Game:
         self.bullets = []
         self.enemies = []
         self.powerups = []
+        self.effects = []
         self.score = 0
         self.lives = self.PLAYER_LIVES
         self.last_shot_time = 0
@@ -137,6 +253,7 @@ class Game:
         self.rapid_fire_until = 0
         self.game_over = False
         self.paused = False
+        self.last_effect_tick = pygame.time.get_ticks()
         self.set_spawn_timer()
 
     # ---------- Spawning ----------
@@ -254,6 +371,78 @@ class Game:
             return str(path)
         return str(self.root_dir / path)
 
+    def _load_explosion_frames(self, sheet_path: str, scale: float = 1.0) -> list[pygame.Surface]:
+        """Slice a 4x4 explosion sprite sheet into frames and optionally scale."""
+        sheet = pygame.image.load(sheet_path).convert_alpha()
+        sheet_w, sheet_h = sheet.get_size()
+        cols = 4
+        rows = 4
+        frame_w = sheet_w // cols
+        frame_h = sheet_h // rows
+        frames: list[pygame.Surface] = []
+        for row in range(rows):
+            for col in range(cols):
+                rect = pygame.Rect(col * frame_w, row * frame_h, frame_w, frame_h)
+                frame = sheet.subsurface(rect).copy()
+                if scale != 1.0:
+                    frame = pygame.transform.scale(frame, (int(frame_w * scale), int(frame_h * scale)))
+                frames.append(frame)
+        return frames
+
+    def _spawn_muzzle_flash(self):
+        width, height = self.muzzle_flash_surface.get_size()
+        scaled = pygame.transform.scale(self.muzzle_flash_surface, (int(width * 0.45), int(height * 0.45)))
+        rotated = pygame.transform.rotate(scaled, -90)  # head-left asset -> point upward
+        pos = (self.plane.rect.centerx, self.plane.rect.top)
+        self.effects.append(TimedSpriteEffect(rotated, pos, duration_ms=90, anchor="midbottom"))
+        self._spawn_smoke_burst(pos, count=4, spread=30, speed=80, upward_bias=-40, radius_range=(4, 7), life_ms=260)
+
+    def _spawn_explosion(self, pos: tuple[int, int]):
+        if not self.explosion_frames:
+            return
+        self.effects.append(AnimatedEffect(self.explosion_frames, pos, frame_ms=55, anchor="center"))
+        self._spawn_smoke_burst(pos, count=12, spread=90, speed=140, upward_bias=-10, radius_range=(6, 11), life_ms=520)
+
+    def _spawn_trail_dot(self, pos: tuple[int, int]):
+        self.effects.append(TrailDot(pos, radius=5, duration_ms=160))
+
+    def _spawn_smoke_burst(
+        self,
+        pos: tuple[int, int],
+        count: int = 8,
+        spread: float = 60.0,
+        speed: float = 120.0,
+        upward_bias: float = -20.0,
+        radius_range: tuple[int, int] = (5, 9),
+        life_ms: int = 420,
+    ):
+        for _ in range(count):
+            angle = random.uniform(-spread, spread)
+            mag = random.uniform(speed * 0.4, speed)
+            vx = mag * 0.01 * random.choice([-1, 1]) * random.random()
+            vy = upward_bias + random.uniform(-speed * 0.1, speed * 0.2)
+            radius = random.randint(radius_range[0], radius_range[1])
+            color = (random.randint(150, 200), random.randint(150, 200), random.randint(150, 200), random.randint(120, 180))
+            self.effects.append(Particle(pos, (vx, vy), radius=radius, duration_ms=life_ms, color=color))
+
+    def _update_effects(self, now: int):
+        dt = max(0, now - self.last_effect_tick)
+        self.last_effect_tick = now
+        for effect in self.effects[:]:
+            if isinstance(effect, Particle):
+                effect.update(dt)
+                if effect.is_dead(now):
+                    self.effects.remove(effect)
+            elif isinstance(effect, AnimatedEffect):
+                if effect.is_dead(now):
+                    self.effects.remove(effect)
+            elif isinstance(effect, TimedSpriteEffect):
+                if effect.is_dead(now):
+                    self.effects.remove(effect)
+            elif isinstance(effect, TrailDot):
+                if effect.is_dead(now):
+                    self.effects.remove(effect)
+
     # ---------- Game Loop ----------
     def run(self):
         """Main loop: handle input, update state, render frames."""
@@ -278,6 +467,7 @@ class Game:
 
             if not self.game_over and not self.paused:
                 now = pygame.time.get_ticks()
+                self._update_effects(now)
 
                 # Rapid fire expiration
                 if now > self.rapid_fire_until and self.current_cooldown != self.BASE_BULLET_COOLDOWN_MS:
@@ -293,6 +483,7 @@ class Game:
                         )
                         self.bullets.append(bullet)
                         self.last_shot_time = now
+                        self._spawn_muzzle_flash()
 
                 # Move airplane
                 self.plane.move(keys, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -300,6 +491,9 @@ class Game:
                 # Move bullets
                 for bullet in self.bullets[:]:
                     bullet.move()
+                    if now - bullet.last_trail_tick >= 40:
+                        self._spawn_trail_dot(bullet.rect.center)
+                        bullet.last_trail_tick = now
                     if bullet.is_off_screen(self.WINDOW_HEIGHT):
                         self.bullets.remove(bullet)
 
@@ -317,8 +511,10 @@ class Game:
                         if bullet.rect.colliderect(enemy.rect):
                             if bullet in self.bullets:
                                 self.bullets.remove(bullet)
+                            enemy.start_flash()
                             if enemy.hit(bullet.damage):
                                 if enemy in self.enemies:
+                                    self._spawn_explosion(enemy.rect.center)
                                     self.enemies.remove(enemy)
                                 self.score += enemy.score_value
                                 # Powerup drop
@@ -335,6 +531,7 @@ class Game:
                         if enemy in self.enemies:
                             self.enemies.remove(enemy)
                         self.lives -= 1
+                        self.plane.start_flash()
                         if self.lives <= 0:
                             self.game_over = True
                         continue
@@ -358,20 +555,34 @@ class Game:
                 if self.score >= next_stage_threshold:
                     self.stage += 1
                     self.set_spawn_timer()
+            else:
+                # Let lingering effects expire even when paused or game over
+                self._update_effects(pygame.time.get_ticks())
 
             # Draw everything
+            draw_now = pygame.time.get_ticks()
             self.screen.fill(self.BACKGROUND_COLOR)
             self.background.update_and_draw(self.screen)
-            self.plane.draw(self.screen)
+            self.plane.draw(self.screen, draw_now)
 
             for bullet in self.bullets:
                 bullet.draw(self.screen)
 
             for enemy in self.enemies:
-                enemy.draw(self.screen)
+                enemy.draw(self.screen, draw_now)
 
             for item in self.powerups:
                 item.draw(self.screen)
+
+            for effect in self.effects:
+                if isinstance(effect, AnimatedEffect):
+                    effect.draw(self.screen, draw_now)
+                elif isinstance(effect, TrailDot):
+                    effect.draw(self.screen, draw_now)
+                elif isinstance(effect, Particle):
+                    effect.draw(self.screen, draw_now)
+                else:
+                    effect.draw(self.screen)
 
             self.draw_hud()
 

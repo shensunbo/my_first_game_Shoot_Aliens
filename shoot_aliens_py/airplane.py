@@ -12,6 +12,7 @@ class Airplane:
         self.rect = self.image.get_rect()
         self.rect.center = (init_pos_x, init_pos_y)
         self.speed = speed
+        self.flash_until = 0
 
     def move(self, keys, window_width, window_height):
         """Update position based on pressed keys while clamping to window bounds."""
@@ -28,6 +29,16 @@ class Airplane:
         """Return current (x, y) position of the plane's rect."""
         return self.rect.x, self.rect.y
 
-    def draw(self, screen):
-        """Blit the plane sprite to the screen."""
-        screen.blit(self.image, self.rect)
+    def start_flash(self, duration_ms: int = 120):
+        """Trigger a temporary bright flash overlay (damage feedback)."""
+        self.flash_until = pygame.time.get_ticks() + duration_ms
+
+    def draw(self, screen, now: int | None = None):
+        """Blit the plane sprite; tint white briefly if flashing."""
+        now = now or pygame.time.get_ticks()
+        if now < self.flash_until:
+            flash_img = self.image.copy()
+            flash_img.fill((255, 255, 255, 160), None, pygame.BLEND_RGBA_ADD)
+            screen.blit(flash_img, self.rect)
+        else:
+            screen.blit(self.image, self.rect)

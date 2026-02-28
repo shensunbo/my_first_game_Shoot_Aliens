@@ -1,0 +1,1 @@
+16 images of an explosion taking place.  Each is 64 X 64.

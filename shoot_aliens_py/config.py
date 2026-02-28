@@ -16,6 +16,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "assets": {
         "player": "res/airplane.png",
         "bullet": "res/bullet.png",
+        "flash": "res/flash/MuzzleFlash.png",
+        "explosion": "res/explosion/exp2_0.png",
         "enemies": [
             "res/alien.png",
             "res/alien1.png",

@@ -15,6 +15,7 @@ class Enemy:
         self.drift = drift
         self.hp = hp
         self.score_value = score_value
+        self.flash_until = 0
 
     def move(self, window_width):
         """Advance enemy downward and apply horizontal drift within screen bounds."""
@@ -32,10 +33,20 @@ class Enemy:
         self.hp -= damage
         return self.hp <= 0
 
+    def start_flash(self, duration_ms: int = 90):
+        """Trigger a short white flash overlay (feedback on hit)."""
+        self.flash_until = pygame.time.get_ticks() + duration_ms
+
     def is_off_screen(self, window_width, window_height):
         """Return True if enemy has left the play area."""
         return self.rect.top > window_height or self.rect.right < 0 or self.rect.left > window_width
 
-    def draw(self, screen):
-        """Render the enemy sprite."""
-        screen.blit(self.image, self.rect)
+    def draw(self, screen, now: int | None = None):
+        """Render the enemy sprite with optional flash tint."""
+        now = now or pygame.time.get_ticks()
+        if now < self.flash_until:
+            flash_img = self.image.copy()
+            flash_img.fill((255, 255, 255, 160), None, pygame.BLEND_RGBA_ADD)
+            screen.blit(flash_img, self.rect)
+        else:
+            screen.blit(self.image, self.rect)
