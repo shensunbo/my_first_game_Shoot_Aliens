@@ -76,8 +76,8 @@ class Game:
         self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
         pygame.display.set_caption("Shoot Aliens")
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 32)
-        self.big_font = pygame.font.Font(None, 72)
+        self.font = pygame.font.Font(None, 26)
+        self.big_font = pygame.font.Font(None, 56)
 
         self.ENEMY_SPAWN_EVENT = pygame.USEREVENT + 1
 
@@ -163,37 +163,76 @@ class Game:
 
     # ---------- HUD ----------
     def draw_hud(self):
-        """Render score, lives, stage, cooldown, and active rapid-fire timer."""
+        """Render score bar, health bar, stage, weapon, cooldown, and timers."""
         now = pygame.time.get_ticks()
-        score_text = self.font.render(f"Score: {self.score}", True, self.TEXT_COLOR)
-        lives_text = self.font.render(f"Lives: {self.lives}", True, self.TEXT_COLOR)
+
+        # HUD surface (fully transparent background)
+        hud_height = 150
+        hud_surface = pygame.Surface((self.WINDOW_WIDTH, hud_height), pygame.SRCALPHA)
+
+        self._draw_score_bar(hud_surface, (12, 12), width=300, height=12)
+
+        self._draw_health_bar((12, 36), surface=hud_surface)
+
         stage_text = self.font.render(f"Stage: {self.stage}", True, self.TEXT_COLOR)
+        hud_surface.blit(stage_text, (12, 64))
+
+        weapon = "Rapid Fire" if self.rapid_fire_until > now else "Bullet"
+        weapon_text = self.font.render(f"Weapon: {weapon}", True, self.TEXT_COLOR)
         cd_text = self.font.render(f"Fire CD: {self.current_cooldown}ms", True, self.TEXT_COLOR)
-        self.screen.blit(score_text, (15, 15))
-        self.screen.blit(lives_text, (15, 45))
-        self.screen.blit(stage_text, (15, 75))
-        self.screen.blit(cd_text, (15, 105))
+        hud_surface.blit(weapon_text, (12, 92))
+        hud_surface.blit(cd_text, (190, 92))
 
         if self.rapid_fire_until > now:
             remaining = max(0, self.rapid_fire_until - now) // 1000 + 1
             rf_text = self.font.render(f"Rapid Fire {remaining}s", True, (255, 215, 0))
-            self.screen.blit(rf_text, (15, 135))
+            hud_surface.blit(rf_text, (380, 92))
+
+        self.screen.blit(hud_surface, (0, 0))
+
+    def _draw_health_bar(self, pos, surface=None):
+        """Draw a simple health bar representing remaining lives."""
+        x, y = pos
+        bar_width = 190
+        bar_height = 14
+        pct = max(0, min(1, self.lives / self.MAX_LIVES))
+        fill_width = int(bar_width * pct)
+        surface = surface or self.screen
+
+        # Background
+        pygame.draw.rect(surface, (70, 70, 70), (x, y, bar_width, bar_height), border_radius=6)
+        # Fill
+        pygame.draw.rect(surface, (220, 80, 80), (x, y, fill_width, bar_height), border_radius=6)
+        # Border
+        pygame.draw.rect(surface, (240, 240, 240), (x, y, bar_width, bar_height), width=2, border_radius=6)
+
+    # No text label; bar-only per request
+
+    def _draw_score_bar(self, surface, pos, width=280, height=12):
+        """Show progress toward the next stage as a bar under the score."""
+        x, y = pos
+        prev_threshold = max(0, (self.stage - 1) * self.STAGE_SCORE_STEP)
+        progress_score = max(0, self.score - prev_threshold)
+        pct = min(1.0, progress_score / self.STAGE_SCORE_STEP)
+        fill_width = int(width * pct)
+
+        pygame.draw.rect(surface, (60, 70, 100), (x, y, width, height), border_radius=6)
+        pygame.draw.rect(surface, (90, 180, 255), (x, y, fill_width, height), border_radius=6)
+        pygame.draw.rect(surface, (200, 210, 230), (x, y, width, height), width=1, border_radius=6)
+
+    # No text label; bar-only per request
 
     def draw_pause(self):
-        """Render pause overlay."""
+        """Render pause overlay with quick controls/help."""
         title = self.big_font.render("Paused", True, self.TEXT_COLOR)
-        prompt = self.font.render("Press P to resume", True, self.TEXT_COLOR)
-        self.screen.blit(title, title.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 20)))
-        self.screen.blit(prompt, prompt.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 + 30)))
+        self.screen.blit(title, title.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2)))
 
     def draw_game_over(self):
         """Render game over overlay and final score."""
         title = self.big_font.render("Game Over", True, self.TEXT_COLOR)
-        prompt = self.font.render("Press R to restart or Q to quit", True, self.TEXT_COLOR)
         result = self.font.render(f"Final Score: {self.score}", True, self.TEXT_COLOR)
-        self.screen.blit(title, title.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 40)))
-        self.screen.blit(result, result.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 + 10)))
-        self.screen.blit(prompt, prompt.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 + 60)))
+        self.screen.blit(title, title.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 70)))
+        self.screen.blit(result, result.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 20)))
 
     # ---------- Game Loop ----------
     def run(self):
