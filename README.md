@@ -1,5 +1,5 @@
 # my_first_game_Shoot_Aliens
-Vertical shooter built with Python + pygame. Current build includes player movement, bullets with cooldown (rapid-fire powerup), scaling enemy waves, collisions, score, lives, powerups, pause, and restartable game over screen.
+Vertical shooter built with Python + pygame. Current build includes player movement, bullets with cooldown (rapid-fire powerup), scaling enemy waves, collisions, score, lives, powerups, pause, restartable game over screen, and a scrolling starfield background.
 
 ## Run
 ```bash
@@ -7,7 +7,7 @@ python3 shoot_aliens_py/day0.py
 ```
 
 ## Configure
-Tunable parameters live in `config.json` (window size/FPS, player speed & lives, bullet cooldowns, enemy spawn & speed scaling, powerup drop chance, colors). Edit the file and rerun; defaults are applied if keys are missing.
+Tunable parameters live in `config.json` (window size/FPS, player speed & lives, bullet cooldowns, enemy spawn & speed scaling, powerup drop chance, colors, background layers/star density). Edit the file and rerun; defaults are applied if keys are missing.
 
 Architecture: the main game loop is in `shoot_aliens_py/game.py` (Game class). `shoot_aliens_py/day0.py` is a thin entry point that just runs the Game.
 

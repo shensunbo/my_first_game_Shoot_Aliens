@@ -47,5 +47,9 @@
   "colors": {
     "background": [5, 5, 20],
     "text": [240, 240, 240]
+  },
+  "background": {
+    "layers": 3,
+    "stars_per_layer": 60
   }
 }

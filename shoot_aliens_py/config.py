@@ -41,6 +41,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "powerups": {"drop_chance": 0.12, "heal_max_lives": 5},
     "colors": {"background": [5, 5, 20], "text": [240, 240, 240]},
+    "background": {"layers": 3, "stars_per_layer": 60},
 }
 
 

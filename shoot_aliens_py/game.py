@@ -10,6 +10,7 @@ from airplane import Airplane
 from bullet import Bullet
 from enemy import Enemy
 from powerup import PowerUp, random_powerup_kind
+from background import Starfield
 from config import load_config
 
 
@@ -61,6 +62,15 @@ class Game:
             str(self.root_dir / "res" / "alien2.png"),
             str(self.root_dir / "res" / "alien3.png"),
         ]
+
+        # Background
+        bg_cfg = self.cfg.get("background", {})
+        self.background = Starfield(
+            self.WINDOW_WIDTH,
+            self.WINDOW_HEIGHT,
+            layers=bg_cfg.get("layers", 3),
+            stars_per_layer=bg_cfg.get("stars_per_layer", 60),
+        )
 
         # Pygame constructs
         self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
@@ -288,6 +298,7 @@ class Game:
 
             # Draw everything
             self.screen.fill(self.BACKGROUND_COLOR)
+            self.background.update_and_draw(self.screen)
             self.plane.draw(self.screen)
 
             for bullet in self.bullets:
