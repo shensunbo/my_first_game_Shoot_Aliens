@@ -10,11 +10,15 @@ class Airplane:
         self.rect.center = (init_pos_x, init_pos_y)
         self.speed = speed
 
-    def move(self, keys, window_width):
+    def move(self, keys, window_width, window_height):
         if keys[pygame.K_LEFT] and self.rect.left > 0:
             self.rect.x -= self.speed
         if keys[pygame.K_RIGHT] and self.rect.right < window_width:
             self.rect.x += self.speed
+        if keys[pygame.K_UP] and self.rect.top > 0:
+            self.rect.y -= self.speed
+        if keys[pygame.K_DOWN] and self.rect.bottom < window_height:
+            self.rect.y += self.speed
 
     def getPos(self):
         return self.rect.x, self.rect.y
