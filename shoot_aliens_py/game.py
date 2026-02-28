@@ -126,12 +126,16 @@ class Particle:
 class Game:
     """Encapsulates all gameplay state, rendering, and event handling."""
 
-    def __init__(self, config_path: Path | None = None):
+    def __init__(self, config_path: Path | None = None, selected_assets: dict | None = None):
         """Initialize pygame, load config, prepare assets and starting state."""
         pygame.init()
 
         self.root_dir = Path(__file__).resolve().parent.parent
         self.cfg = load_config(config_path)
+
+        # Allow runtime asset overrides (e.g., from selection screen)
+        if selected_assets:
+            self.cfg.setdefault("assets", {}).update(selected_assets)
 
         # Extract config values
         w_cfg = self.cfg["window"]
