@@ -1,4 +1,4 @@
-"""Entry point kept minimal; main loop lives in Game class."""
+"""Entry point: launches the Game loop contained in `game.py`."""
 
 from game import Game
 

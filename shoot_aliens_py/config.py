@@ -2,6 +2,9 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+"""Configuration loader with defaults and deep-merge support."""
+
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "window": {"width": 1280, "height": 720, "fps": 60},
     "player": {"speed": 8, "lives": 3, "max_lives": 5},
@@ -42,6 +45,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
 
 def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge override dict into base, returning a new dict."""
     result: Dict[str, Any] = dict(base)
     for k, v in override.items():
         if k in result and isinstance(result[k], dict) and isinstance(v, dict):
@@ -52,6 +56,7 @@ def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]
 
 
 def load_config(path: Path | None = None) -> Dict[str, Any]:
+    """Load config from JSON if present, merged over defaults."""
     if path is None:
         path = Path(__file__).resolve().parent.parent / "config.json"
     if path.exists():

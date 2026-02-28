@@ -6,8 +6,12 @@ POWERUP_TYPES = (
     "rapid_fire",   # faster cooldown for a duration
 )
 
+
 class PowerUp:
+    """Floating collectible that grants a temporary or instant benefit."""
+
     def __init__(self, kind: str, x: int, y: int, size: int = 40, fall_speed: int = 4):
+        """Create a simple circular powerup sprite at (x, y)."""
         self.kind = kind
         self.image = pygame.Surface((size, size), pygame.SRCALPHA)
         color = (80, 200, 120) if kind == "heal" else (200, 200, 80)
@@ -19,14 +23,18 @@ class PowerUp:
         self.fall_speed = fall_speed
 
     def move(self):
+        """Let the powerup fall downward each frame."""
         self.rect.y += self.fall_speed
 
     def is_off_screen(self, height):
+        """Return True if the powerup has fallen below the window."""
         return self.rect.top > height
 
     def draw(self, screen):
+        """Render the powerup circle."""
         screen.blit(self.image, self.rect)
 
 
 def random_powerup_kind():
+    """Pick a powerup type at random for drops."""
     return random.choice(POWERUP_TYPES)

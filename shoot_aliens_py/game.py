@@ -1,3 +1,5 @@
+"""Main game loop and state container for Shoot Aliens."""
+
 import random
 import sys
 from pathlib import Path
@@ -12,7 +14,10 @@ from config import load_config
 
 
 class Game:
+    """Encapsulates all gameplay state, rendering, and event handling."""
+
     def __init__(self, config_path: Path | None = None):
+        """Initialize pygame, load config, prepare assets and starting state."""
         pygame.init()
 
         self.root_dir = Path(__file__).resolve().parent.parent
@@ -84,10 +89,12 @@ class Game:
 
     # ---------- Setup & reset ----------
     def set_spawn_timer(self):
+        """Schedule enemy spawn timer based on current stage/difficulty."""
         interval = max(self.MIN_SPAWN_MS, self.BASE_SPAWN_MS - (self.stage - 1) * self.SPAWN_STEP_MS)
         pygame.time.set_timer(self.ENEMY_SPAWN_EVENT, interval)
 
     def reset_game(self):
+        """Reset player, enemies, powerups, and progression to defaults."""
         self.plane = Airplane(
             str(self.root_dir / "res" / "airplane.png"),
             100,
@@ -111,6 +118,7 @@ class Game:
 
     # ---------- Spawning ----------
     def spawn_enemy(self):
+        """Create a new enemy with stats derived from stage and config."""
         if len(self.enemies) >= self.MAX_ENEMIES:
             return
 
@@ -145,6 +153,7 @@ class Game:
 
     # ---------- HUD ----------
     def draw_hud(self):
+        """Render score, lives, stage, cooldown, and active rapid-fire timer."""
         now = pygame.time.get_ticks()
         score_text = self.font.render(f"Score: {self.score}", True, self.TEXT_COLOR)
         lives_text = self.font.render(f"Lives: {self.lives}", True, self.TEXT_COLOR)
@@ -161,12 +170,14 @@ class Game:
             self.screen.blit(rf_text, (15, 135))
 
     def draw_pause(self):
+        """Render pause overlay."""
         title = self.big_font.render("Paused", True, self.TEXT_COLOR)
         prompt = self.font.render("Press P to resume", True, self.TEXT_COLOR)
         self.screen.blit(title, title.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 20)))
         self.screen.blit(prompt, prompt.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 + 30)))
 
     def draw_game_over(self):
+        """Render game over overlay and final score."""
         title = self.big_font.render("Game Over", True, self.TEXT_COLOR)
         prompt = self.font.render("Press R to restart or Q to quit", True, self.TEXT_COLOR)
         result = self.font.render(f"Final Score: {self.score}", True, self.TEXT_COLOR)
@@ -176,6 +187,7 @@ class Game:
 
     # ---------- Game Loop ----------
     def run(self):
+        """Main loop: handle input, update state, render frames."""
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
