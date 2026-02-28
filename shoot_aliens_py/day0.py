@@ -1,7 +1,10 @@
-"""Vertical shooter step 2: difficulty scaling, powerups, pause, tougher enemies."""
+"""Vertical shooter step 3: config-driven tuning for difficulty, powerups, UI."""
 
+import json
 import random
 import sys
+from pathlib import Path
+
 import pygame
 
 from airplane import Airplane
@@ -12,22 +15,87 @@ from powerup import PowerUp, random_powerup_kind
 # Initialize pygame
 pygame.init()
 
-# Constants
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
-FPS = 60
-AIRPLANE_SPEED = 8
-BASE_BULLET_COOLDOWN_MS = 200
-RAPID_FIRE_COOLDOWN_MS = 100
-RAPID_FIRE_DURATION_MS = 5000
-BASE_SPAWN_MS = 750
-MIN_SPAWN_MS = 250
-SPAWN_STEP_MS = 40
-MAX_ENEMIES = 14
-PLAYER_LIVES = 3
-MAX_LIVES = 5
-STAGE_SCORE_STEP = 150
-POWERUP_DROP_CHANCE = 0.12
+
+DEFAULT_CONFIG = {
+    "window": {"width": 1280, "height": 720, "fps": 60},
+    "player": {"speed": 8, "lives": 3, "max_lives": 5},
+    "bullet": {
+        "cooldown_ms": 200,
+        "rapid_fire_cooldown_ms": 100,
+        "rapid_fire_duration_ms": 5000,
+    },
+    "enemy": {
+        "base_spawn_ms": 750,
+        "min_spawn_ms": 250,
+        "spawn_step_ms": 40,
+        "max_enemies": 14,
+        "stage_score_step": 150,
+        "tough": {
+            "chance_base": 0.15,
+            "chance_per_stage": 0.02,
+            "chance_max": 0.45,
+            "speed_base_min": 3,
+            "speed_base_max": 5,
+            "speed_stage_div": 3,
+            "speed_cap": 9,
+            "hp": 3,
+            "score": 25,
+        },
+        "regular": {
+            "speed_base_min": 2,
+            "speed_base_max": 4,
+            "speed_stage_div": 4,
+            "speed_cap": 7,
+            "hp": 1,
+            "score": 10,
+        },
+    },
+    "powerups": {"drop_chance": 0.12, "heal_max_lives": 5},
+    "colors": {"background": [5, 5, 20], "text": [240, 240, 240]},
+}
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    result = dict(base)
+    for k, v in override.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def load_config(path: Path) -> dict:
+    if path.exists():
+        with path.open("r", encoding="utf-8") as f:
+            user_cfg = json.load(f)
+        return deep_merge(DEFAULT_CONFIG, user_cfg)
+    return DEFAULT_CONFIG
+
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+CFG = load_config(CONFIG_PATH)
+
+
+# Constants from config
+WINDOW_WIDTH = CFG["window"]["width"]
+WINDOW_HEIGHT = CFG["window"]["height"]
+FPS = CFG["window"]["fps"]
+AIRPLANE_SPEED = CFG["player"]["speed"]
+BASE_BULLET_COOLDOWN_MS = CFG["bullet"]["cooldown_ms"]
+RAPID_FIRE_COOLDOWN_MS = CFG["bullet"]["rapid_fire_cooldown_ms"]
+RAPID_FIRE_DURATION_MS = CFG["bullet"]["rapid_fire_duration_ms"]
+BASE_SPAWN_MS = CFG["enemy"]["base_spawn_ms"]
+MIN_SPAWN_MS = CFG["enemy"]["min_spawn_ms"]
+SPAWN_STEP_MS = CFG["enemy"]["spawn_step_ms"]
+MAX_ENEMIES = CFG["enemy"]["max_enemies"]
+PLAYER_LIVES = CFG["player"]["lives"]
+MAX_LIVES = CFG["player"]["max_lives"]
+STAGE_SCORE_STEP = CFG["enemy"]["stage_score_step"]
+POWERUP_DROP_CHANCE = CFG["powerups"]["drop_chance"]
+
+TOUGH = CFG["enemy"]["tough"]
+REGULAR = CFG["enemy"]["regular"]
 
 ENEMY_IMAGES = [
     "res/alien.png",
@@ -36,8 +104,8 @@ ENEMY_IMAGES = [
     "res/alien3.png",
 ]
 
-BACKGROUND_COLOR = (5, 5, 20)
-TEXT_COLOR = (240, 240, 240)
+BACKGROUND_COLOR = tuple(CFG["colors"]["background"])
+TEXT_COLOR = tuple(CFG["colors"]["text"])
 
 # Initialize screen
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -56,22 +124,28 @@ def spawn_enemy(enemies, stage):
         return
 
     # Chance to spawn a tougher enemy as stage increases
-    tough_chance = min(0.15 + 0.02 * (stage - 1), 0.45)
+    tough_chance = min(
+        TOUGH["chance_base"] + TOUGH["chance_per_stage"] * (stage - 1), TOUGH["chance_max"]
+    )
     is_tough = random.random() < tough_chance
 
     image_path = random.choice(ENEMY_IMAGES)
     if is_tough:
         width, height = 90, 90
-        hp = 3
-        # Slower base speed and capped scaling for tough enemies
-        speed = min(9, random.randint(3, 5) + stage // 3)
-        score_value = 25
+        hp = TOUGH["hp"]
+        speed = min(
+            TOUGH["speed_cap"],
+            random.randint(TOUGH["speed_base_min"], TOUGH["speed_base_max"]) + stage // TOUGH["speed_stage_div"],
+        )
+        score_value = TOUGH["score"]
     else:
         width, height = 70, 70
-        hp = 1
-        # Slower base speed and capped scaling for regular enemies
-        speed = min(7, random.randint(2, 4) + stage // 4)
-        score_value = 10
+        hp = REGULAR["hp"]
+        speed = min(
+            REGULAR["speed_cap"],
+            random.randint(REGULAR["speed_base_min"], REGULAR["speed_base_max"]) + stage // REGULAR["speed_stage_div"],
+        )
+        score_value = REGULAR["score"]
 
     x = random.randint(width, WINDOW_WIDTH - width)
     y = -height

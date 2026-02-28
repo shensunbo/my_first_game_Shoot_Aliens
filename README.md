@@ -6,6 +6,9 @@ Vertical shooter built with Python + pygame. Current build includes player movem
 python3 shoot_aliens_py/day0.py
 ```
 
+## Configure
+Tunable parameters live in `config.json` (window size/FPS, player speed & lives, bullet cooldowns, enemy spawn & speed scaling, powerup drop chance, colors). Edit the file and rerun; defaults are applied if keys are missing.
+
 ## Controls
 - Arrow keys: move (up/down/left/right)
 - Space or **F**: fire
