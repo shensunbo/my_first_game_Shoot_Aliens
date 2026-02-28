@@ -133,9 +133,15 @@ class Game:
         self.root_dir = Path(__file__).resolve().parent.parent
         self.cfg = load_config(config_path)
 
-        # Allow runtime asset overrides (e.g., from selection screen)
+        # Allow runtime overrides (e.g., from selection screen)
         if selected_assets:
-            self.cfg.setdefault("assets", {}).update(selected_assets)
+            asset_keys = {"player", "bullet", "flash", "explosion", "enemies"}
+            asset_override = {k: v for k, v in selected_assets.items() if k in asset_keys}
+            if asset_override:
+                self.cfg.setdefault("assets", {}).update(asset_override)
+            bg_override = selected_assets.get("background")
+            if bg_override:
+                self.cfg.setdefault("background", {}).update(bg_override)
 
         # Extract config values
         w_cfg = self.cfg["window"]
@@ -186,14 +192,12 @@ class Game:
         self.BACKGROUND_COLOR = tuple(c_cfg["background"])
         self.TEXT_COLOR = tuple(c_cfg["text"])
 
-        # Background
+        # Background config
         bg_cfg = self.cfg.get("background", {})
-        self.background = Starfield(
-            self.WINDOW_WIDTH,
-            self.WINDOW_HEIGHT,
-            layers=bg_cfg.get("layers", 3),
-            stars_per_layer=bg_cfg.get("stars_per_layer", 60),
-        )
+        self.background_mode = bg_cfg.get("mode", "dynamic")
+        self.background_image_path = self._resolve_asset_path(bg_cfg.get("image", "res/background.png"))
+        self.background_layers = bg_cfg.get("layers", 3)
+        self.background_stars = bg_cfg.get("stars_per_layer", 60)
 
         # Pygame constructs
         self.screen = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
@@ -201,6 +205,10 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 26)
         self.big_font = pygame.font.Font(None, 56)
+
+        self.starfield = None
+        self.static_background = None
+        self._init_background()
 
         # Preload bullet sprite once for reuse
         self.bullet_surface = pygame.transform.scale(
@@ -230,6 +238,27 @@ class Game:
         self.reset_game()
 
     # ---------- Setup & reset ----------
+    def _init_background(self):
+        if self.background_mode == "static":
+            try:
+                img = pygame.image.load(self.background_image_path).convert()
+                self.static_background = pygame.transform.scale(
+                    img, (self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
+                )
+                self.starfield = None
+                return
+            except pygame.error:
+                # Fallback to dynamic if loading fails
+                self.background_mode = "dynamic"
+
+        self.starfield = Starfield(
+            self.WINDOW_WIDTH,
+            self.WINDOW_HEIGHT,
+            layers=self.background_layers,
+            stars_per_layer=self.background_stars,
+        )
+        self.static_background = None
+
     def set_spawn_timer(self):
         """Schedule enemy spawn timer based on current stage/difficulty."""
         interval = max(self.MIN_SPAWN_MS, self.BASE_SPAWN_MS - (self.stage - 1) * self.SPAWN_STEP_MS)
@@ -565,8 +594,12 @@ class Game:
 
             # Draw everything
             draw_now = pygame.time.get_ticks()
-            self.screen.fill(self.BACKGROUND_COLOR)
-            self.background.update_and_draw(self.screen)
+            if self.background_mode == "static" and self.static_background is not None:
+                self.screen.blit(self.static_background, (0, 0))
+            else:
+                self.screen.fill(self.BACKGROUND_COLOR)
+                if self.starfield:
+                    self.starfield.update_and_draw(self.screen)
             self.plane.draw(self.screen, draw_now)
 
             for bullet in self.bullets:
