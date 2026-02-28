@@ -1,13 +1,14 @@
 import pygame
 
 class Bullet:
-    def __init__(self, x, y):
+    def __init__(self, x, y, damage: int = 1):
         # Load and resize bullet image
         self.image = pygame.image.load("res/bullet.png")
-        self.image = pygame.transform.scale(self.image, (50, 50))  # Resize to 10x10 pixels
+        self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
-        self.speed = 15  # Speed of the bullet
+        self.speed = 15
+        self.damage = damage
 
     def move(self):
         """Move the bullet upwards."""

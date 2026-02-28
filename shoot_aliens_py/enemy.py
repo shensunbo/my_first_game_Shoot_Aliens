@@ -2,13 +2,15 @@ import pygame
 import random
 
 class Enemy:
-    def __init__(self, image_path, width, height, x, y, speed, drift=0):
+    def __init__(self, image_path, width, height, x, y, speed, drift=0, hp=1, score_value=10):
         self.image = pygame.image.load(image_path)
         self.image = pygame.transform.scale(self.image, (width, height))
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.speed = speed
         self.drift = drift
+        self.hp = hp
+        self.score_value = score_value
 
     def move(self, window_width):
         self.rect.y += self.speed
@@ -20,6 +22,10 @@ class Enemy:
         elif self.rect.right > window_width:
             self.rect.right = window_width
             self.drift = -abs(self.drift)
+
+    def hit(self, damage: int = 1):
+        self.hp -= damage
+        return self.hp <= 0
 
     def is_off_screen(self, window_width, window_height):
         return self.rect.top > window_height or self.rect.right < 0 or self.rect.left > window_width
