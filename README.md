@@ -7,7 +7,17 @@ python3 shoot_aliens_py/day0.py
 ```
 
 ## Configure
-Tunable parameters live in `config.json` (window size/FPS, player speed & lives, bullet cooldowns, enemy spawn & speed scaling, powerup drop chance, colors, background layers/star density). Edit the file and rerun; defaults are applied if keys are missing.
+Tunable parameters live in `config.json`:
+- Core: window size/FPS, player speed & lives, bullet cooldowns, enemy spawn & speed scaling, powerup drop chance, colors, background layers/star density.
+- Assets: under `"assets"` you can swap sprites without code changes:
+	```json
+	"assets": {
+		"player": "res/airplane.png",
+		"bullet": "res/bullet.png",
+		"enemies": ["res/alien.png", "res/alien1.png", "res/alien2.png", "res/alien3.png"]
+	}
+	```
+Use relative paths (from project root) or absolute paths. Edit and rerun; missing keys fall back to defaults.
 
 Architecture: the main game loop is in `shoot_aliens_py/game.py` (Game class). `shoot_aliens_py/day0.py` is a thin entry point that just runs the Game.
 

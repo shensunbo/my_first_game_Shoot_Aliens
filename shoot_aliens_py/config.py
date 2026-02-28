@@ -13,6 +13,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rapid_fire_cooldown_ms": 100,
         "rapid_fire_duration_ms": 5000,
     },
+    "assets": {
+        "player": "res/airplane.png",
+        "bullet": "res/bullet.png",
+        "enemies": [
+            "res/alien.png",
+            "res/alien1.png",
+            "res/alien2.png",
+            "res/alien3.png",
+        ],
+    },
     "enemy": {
         "base_spawn_ms": 750,
         "min_spawn_ms": 250,

@@ -51,5 +51,17 @@
   "background": {
     "layers": 3,
     "stars_per_layer": 60
+  },
+  "assets": {
+    "player": "res/player/finger.png",
+    "bullet": "res/bullet/tomato.png",
+    "enemies": [
+      "res/enemy/aptiv.png",
+      "res/enemy/anthropic.png",
+      "res/enemy/sougou.png",
+      "res/enemy/chrome.png",
+      "res/enemy/teams.png",
+      "res/enemy/android.png"
+    ]
   }
 }

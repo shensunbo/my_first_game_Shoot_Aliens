@@ -31,6 +31,7 @@ class Game:
         e_cfg = self.cfg["enemy"]
         c_cfg = self.cfg["colors"]
         pow_cfg = self.cfg["powerups"]
+        a_cfg = self.cfg.get("assets", {})
 
         self.WINDOW_WIDTH = w_cfg["width"]
         self.WINDOW_HEIGHT = w_cfg["height"]
@@ -53,15 +54,22 @@ class Game:
 
         self.POWERUP_DROP_CHANCE = pow_cfg["drop_chance"]
 
+        # Assets
+        self.PLAYER_IMAGE_PATH = self._resolve_asset_path(a_cfg.get("player", "res/airplane.png"))
+        self.BULLET_IMAGE_PATH = self._resolve_asset_path(a_cfg.get("bullet", "res/bullet.png"))
+        enemy_assets = a_cfg.get(
+            "enemies",
+            [
+                "res/alien.png",
+                "res/alien1.png",
+                "res/alien2.png",
+                "res/alien3.png",
+            ],
+        )
+        self.enemy_images = [self._resolve_asset_path(p) for p in enemy_assets]
+
         self.BACKGROUND_COLOR = tuple(c_cfg["background"])
         self.TEXT_COLOR = tuple(c_cfg["text"])
-
-        self.enemy_images = [
-            str(self.root_dir / "res" / "alien.png"),
-            str(self.root_dir / "res" / "alien1.png"),
-            str(self.root_dir / "res" / "alien2.png"),
-            str(self.root_dir / "res" / "alien3.png"),
-        ]
 
         # Background
         bg_cfg = self.cfg.get("background", {})
@@ -78,6 +86,11 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 26)
         self.big_font = pygame.font.Font(None, 56)
+
+        # Preload bullet sprite once for reuse
+        self.bullet_surface = pygame.transform.scale(
+            pygame.image.load(self.BULLET_IMAGE_PATH).convert_alpha(), (50, 50)
+        )
 
         self.ENEMY_SPAWN_EVENT = pygame.USEREVENT + 1
 
@@ -106,7 +119,7 @@ class Game:
     def reset_game(self):
         """Reset player, enemies, powerups, and progression to defaults."""
         self.plane = Airplane(
-            str(self.root_dir / "res" / "airplane.png"),
+            self.PLAYER_IMAGE_PATH,
             100,
             100,
             self.WINDOW_WIDTH // 2,
@@ -234,6 +247,13 @@ class Game:
         self.screen.blit(title, title.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 70)))
         self.screen.blit(result, result.get_rect(center=(self.WINDOW_WIDTH // 2, self.WINDOW_HEIGHT // 2 - 20)))
 
+    def _resolve_asset_path(self, path_str: str) -> str:
+        """Return absolute path for an asset, resolving relative to project root."""
+        path = Path(path_str)
+        if path.is_absolute():
+            return str(path)
+        return str(self.root_dir / path)
+
     # ---------- Game Loop ----------
     def run(self):
         """Main loop: handle input, update state, render frames."""
@@ -266,7 +286,11 @@ class Game:
                 # Firing logic with cooldown
                 if keys[pygame.K_f] or keys[pygame.K_SPACE]:
                     if now - self.last_shot_time >= self.current_cooldown:
-                        bullet = Bullet(self.plane.rect.centerx, self.plane.rect.top)
+                        bullet = Bullet(
+                            self.plane.rect.centerx,
+                            self.plane.rect.top,
+                            image_surface=self.bullet_surface,
+                        )
                         self.bullets.append(bullet)
                         self.last_shot_time = now
 
